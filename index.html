@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>貼圖文字組合器</title>
+  <style>
+    :root {
+      --primary-color: #06c755; /* LINE 的綠色，呼應主題 */
+      --primary-hover: #05b34c;
+      --bg-color: #f2f4f6;
+      --card-bg: #ffffff;
+      --text-main: #111111;
+      --text-sub: #888888;
+      --border-color: #e6e6e6;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px 16px; /* 手機版兩側留白 */
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent; /* 移除點擊高亮 */
+    }
+
+    /* 限制最大寬度，讓電腦版也不會太寬 */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding-bottom: 80px; /* 預留底部空間給 Toast 或手指滑動 */
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 20px;
+      text-align: center;
+      color: #333;
+      font-weight: 700;
+    }
+
+    /* 卡片式設計優化 */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px; /* 更圓潤 */
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04); /* 輕微陰影 */
+      border: 1px solid var(--border-color);
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    /* 輸入框優化 */
+    textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      padding: 12px;
+      font-size: 16px; /* 防止 iOS 自動縮放 */
+      background: #fff;
+      transition: border-color 0.2s;
+      appearance: none; /* 移除預設樣式 */
+    }
+
+    /* 自定義 Select 的箭頭 (選用) */
+    select {
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px top 50%;
+      background-size: 10px auto;
+    }
+
+    textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.1);
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    /* 按鈕容器 */
+    .btns {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    /* 按鈕基礎樣式 */
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 20px; /* 增加高度好點擊 */
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%; /* 手機版按鈕預設滿版 */
+    }
+
+    button:active {
+      transform: scale(0.98); /* 點擊回饋效果 */
+    }
+
+    /* 主要按鈕 (複製) */
+    button.primary {
+      background: var(--primary-color);
+      color: white;
+      font-size: 18px; /* 重要按鈕字大一點 */
+      box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+    }
+    button.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    /* 次要按鈕 */
+    button.ghost {
+      background: #f0f0f0;
+      color: #555;
+      flex: 1; /* 讓兩個次要按鈕平分寬度 */
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 8px;
+    }
+
+    /* Toast 通知 */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 24px;
+      border-radius: 50px;
+      background: rgba(30, 30, 30, 0.9);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      width: max-content;
+      max-width: 80%;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LINE 貼圖文字組合器</h1>
+
+    <div class="card">
+      <label for="presetSelect">步驟 1：選擇貼圖文字</label>
+      <select id="presetSelect">
+        <option value="">（請選擇預設文字）</option>
+      </select>
+      <div class="hint">選擇後，文字會自動加到內容的最後方。</div>
+    </div>
+
+    <div class="card">
+      <label for="inputText">步驟 2：輸入 Prompt (會自動儲存)</label>
+      <textarea id="inputText" placeholder="在這裡輸入你的母圖、風格描述..."></textarea>
+      
+      <div class="btns">
+        <button class="ghost" id="saveBtn">儲存內容</button>
+        <button class="ghost" id="clearBtn" style="color: #ff4d4f; background: #fff0f0;">清空</button>
+      </div>
+    </div>
+
+    <div class="card" style="border: 2px solid var(--primary-color); background: #f0fff4;">
+      <label style="color: var(--primary-color);">步驟 3：組合並複製</label>
+      <div class="hint" style="margin-bottom: 12px;">將自動組合「輸入內容」+ 空行 +「選擇文字」</div>
+      <button class="primary" id="copyBtn">📋 一鍵複製組合內容</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">已複製到剪貼簿</div>
+
+  <script>
+    /* 邏輯部分保持不變，僅微調 Toast 顯示方式以配合 CSS 動畫 
+    */
+    const DEFAULT_INPUT =
+  `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+  
+  【角色一致性（最高優先）】
+  - 角色只能有「一個人」
+  - 臉型、五官比例、眼型、鼻型、嘴型、臉部氣質 必須與「母圖」完全一致
+  - 髮型、髮色、服裝、配色、畫風 必須同時符合「母圖」與「錨點圖」
+  - 若母圖與錨點圖有任何差異， 一律以「母圖」為最終標準
+  - 禁止融合、重新詮釋或美化角色外觀
+  - 禁止生成新角色或改變角色設定
+  
+  【畫風與用途】
+  - 寫實素描風格
+  - 線條清楚、顏色柔和
+  - 表情誇張但可愛（不可破壞臉型與五官比例）
+  - 適合作為 LINE 原創靜態貼圖
+  
+  【LINE 官方上架規範（必須遵守）】
+  - 圖片尺寸：370 x 320 px
+  - 圖片格式：PNG
+  - 背景：透明
+  - 檔案大小：小於 1MB
+  - 角色不可貼邊裁切，四周保留安全邊界
+  - 角色需清楚可辨
+  - 文字清楚可讀，不可過小
+  - 不可包含任何商標、品牌或侵權角色
+  
+  【構圖要求】
+  - 單一角色
+  - 半身或全身皆可
+  - 角色置中
+  - 背景保持透明
+  
+  【重要限制（請嚴格遵守）】
+  - 表情與動作只能改變「肢體與情緒」 不可改變臉型、五官比例或角色氣質
+  - 不可加入多餘物件或背景
+  - 不可改變畫風或風格
+  
+  請只輸出「一張符合 LINE 規範的貼圖圖片」`;
+  
+    const LS_KEY = "sticker_text_input_v1";
+  
+    const presets = [
+      { title: "① 你好", content: `【貼圖文字】\n你好\n\n【表情與動作】\n角色微笑，親切揮手，給人第一眼就想打招呼的感覺。` },
+      { title: "② 哈囉", content: `【貼圖文字】\n哈囉\n\n【表情與動作】\n角色開朗笑容，手舉高揮動，充滿活力。` },
+      { title: "③ 請多多指教", content: `【貼圖文字】\n請多多指教\n\n【表情與動作】\n角色微微鞠躬，表情有禮貌又帶點靦腆。` },
+      { title: "④ 好棒", content: `【貼圖文字】\n好棒\n\n【表情與動作】\n角色眼睛發亮，露出佩服與驚喜的表情。` },
+      { title: "⑤ 讚", content: `【貼圖文字】\n讚\n\n【表情與動作】\n角色比出大大的讚手勢，自信又肯定。` },
+      { title: "⑥ 感動", content: `【貼圖文字】\n感動\n\n【表情與動作】\n角色眼眶含淚，雙手放在胸前，表情溫暖。` },
+      { title: "⑦ 驚嚇", content: `【貼圖文字】\n驚嚇\n\n【表情與動作】\n角色睜大眼睛、張嘴，身體微微後仰。` },
+      { title: "⑧ 搞定", content: `【貼圖文字】\n搞定\n\n【表情與動作】\n角色露出得意笑容，做出 OK 或完成任務的手勢。` },
+      { title: "⑨ 完成", content: `【貼圖文字】\n完成\n\n【表情與動作】\n角色放鬆微笑，呈現事情順利結束的感覺。` },
+      { title: "⑩ 加油", content: `【貼圖文字】\n加油\n\n【表情與動作】\n角色握拳打氣，充滿鼓勵與正能量。` },
+      { title: "⑪ 非常感謝", content: `【貼圖文字】\n非常感謝\n\n【表情與動作】\n角色雙手合十或深深鞠躬，表情真誠感激。` },
+      { title: "⑫ 早安", content: `【貼圖文字】\n早安\n\n【表情與動作】\n角色精神滿滿微笑，清爽有朝氣地打招呼。` },
+      { title: "⑬ 午安", content: `【貼圖文字】\n午安\n\n【表情與動作】\n角色溫和微笑，呈現輕鬆、不打擾的問候感。` },
+      { title: "⑭ 晚安", content: `【貼圖文字】\n晚安\n\n【表情與動作】\n角色溫柔揮手，表情放鬆，準備休息。` },
+      { title: "⑮ 在嗎？", content: `【貼圖文字】\n在嗎？\n\n【表情與動作】\n角色微微探頭，眼神帶點詢問與小心翼翼。` },
+      { title: "⑯ 我來了", content: `【貼圖文字】\n我來了\n\n【表情與動作】\n角色小跑步登場，露出開心又自然的笑容。` },
+      { title: "⑰ 再見", content: `【貼圖文字】\n再見\n\n【表情與動作】\n角色揮手道別，表情親切不失禮貌。` },
+      { title: "⑱ 沒問題", content: `【貼圖文字】\n沒問題\n\n【表情與動作】\n角色比出 OK 手勢，表情安心又可靠。` },
+      { title: "⑲ 你可以的", content: `【貼圖文字】\n你可以的\n\n【表情與動作】\n角色向前指、微笑鼓勵，給人被支持的感覺。` },
+      { title: "⑳ 太厲害了", content: `【貼圖文字】\n太厲害了\n\n【表情與動作】\n角色眼睛閃亮，雙手誇張讚嘆，充滿佩服。` },
+      { title: "㉑ 收到", content: `【貼圖文字】\n收到\n\n【表情與動作】\n角色點頭確認，表情認真可靠。` },
+      { title: "㉒ 已讀", content: `【貼圖文字】\n已讀\n\n【表情與動作】\n角色拿著手機或舉牌，表情冷靜簡潔。` },
+      { title: "㉓ 處理中", content: `【貼圖文字】\n處理中\n\n【表情與動作】\n角色專注看資料或電腦，呈現正在忙的狀態。` },
+      { title: "㉔ 稍等一下", content: `【貼圖文字】\n稍等一下\n\n【表情與動作】\n角色舉起一隻手示意等待，態度有禮貌。` },
+      { title: "㉕ 再確認一下", content: `【貼圖文字】\n再確認一下\n\n【表情與動作】\n角色摸著下巴思考，表情謹慎。` },
+      { title: "㉖ 辛苦了", content: `【貼圖文字】\n辛苦了\n\n【表情與動作】\n角色露出體貼微笑，像是在關心對方。` },
+      { title: "㉗ 謝謝", content: `【貼圖文字】\n謝謝\n\n【表情與動作】\n角色微笑點頭，輕鬆自然地表達感謝。` },
+      { title: "㉘ 不好意思", content: `【貼圖文字】\n不好意思\n\n【表情與動作】\n角色抓抓頭，露出歉意表情，帶點害羞。` },
+      { title: "㉙ 麻煩你了", content: `【貼圖文字】\n麻煩你了\n\n【表情與動作】\n角色微笑請託，語氣溫和有禮貌。` },
+      { title: "㉚ 感恩", content: `【貼圖文字】\n感恩\n\n【表情與動作】\n角色雙手合十，表情平靜而真誠。` },
+      { title: "㉛ 開心", content: `【貼圖文字】\n開心\n\n【表情與動作】\n角色露出燦爛笑容，整個人很放鬆愉快。` },
+      { title: "㉜ 傻眼", content: `【貼圖文字】\n傻眼\n\n【表情與動作】\n角色呆住，眼神空白，呈現無言的情緒。` },
+      { title: "㉝ 無奈", content: `【貼圖文字】\n無奈\n\n【表情與動作】\n角色嘆氣、聳肩，表情疲憊又認命。` },
+      { title: "㉞ 好累", content: `【貼圖文字】\n好累\n\n【表情與動作】\n角色彎腰或攤坐，看起來真的沒電了。` },
+      { title: "㉟ 哈哈哈", content: `【貼圖文字】\n哈哈哈\n\n【表情與動作】\n角色彎腰大笑，情緒非常放鬆開心。` },
+      { title: "㊱ 嗯嗯", content: `【貼圖文字】\n嗯嗯\n\n【表情與動作】\n角色連續點頭，表示理解與同意。` },
+      { title: "㊲ 好的", content: `【貼圖文字】\n好的\n\n【表情與動作】\n角色站直或小敬禮，表現出配合的態度。` },
+      { title: "㊳ 沒事", content: `【貼圖文字】\n沒事\n\n【表情與動作】\n角色輕輕揮手安撫，表情溫柔。` },
+      { title: "㊴ 愛你", content: `【貼圖文字】\n愛你\n\n【表情與動作】\n角色露出溫柔真誠的笑容，雙手比出愛心。` },
+      { title: "㊵ 飛吻", content: `【貼圖文字】\n飛吻\n\n【表情與動作】\n角色微微嘟嘴，手從嘴邊向前送出飛吻，俏皮可愛。` },
+      { title: "㊶ 秀秀", content: `【貼圖文字】\n秀秀\n\n【表情與動作】\n角色露出心疼表情，伸手輕輕安撫對方。` },
+    ];
+  
+    const $ = (id) => document.getElementById(id);
+    const inputText = $("inputText");
+    const presetSelect = $("presetSelect");
+    const toast = $("toast");
+  
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      // toast.style.display = "block"; // 改用 class 控制動畫
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2000);
+    }
+  
+    function normalizeNewlines(s) {
+      return (s || "").replace(/\r\n/g, "\n").trim();
+    }
+  
+    function buildCombined() {
+      const user = normalizeNewlines(inputText.value);
+      const sel = presetSelect.value ? presets[Number(presetSelect.value)].content : "";
+      const preset = normalizeNewlines(sel);
+  
+      if (user && preset) return `${user}\n\n${preset}\n`;
+      if (user) return `${user}\n`;
+      if (preset) return `${preset}\n`;
+      return "";
+    }
+  
+    function populateSelect() {
+      presets.forEach((p, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = p.title;
+        presetSelect.appendChild(opt);
+      });
+    }
+  
+    function loadSaved() {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved != null && saved.trim() !== "") inputText.value = saved;
+      else inputText.value = DEFAULT_INPUT;
+    }
+  
+    function saveInput() {
+      localStorage.setItem(LS_KEY, inputText.value);
+      showToast("✅ 已儲存");
+    }
+  
+    function clearInput() {
+      if(confirm("確定要清空並恢復預設值嗎？")) {
+        localStorage.removeItem(LS_KEY);
+        inputText.value = DEFAULT_INPUT;
+        showToast("🧹 已重置為預設內容");
+      }
+    }
+  
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          ta.setSelectionRange(0, ta.value.length);
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch (_) {
+          return false;
+        }
+      }
+    }
+  
+    // init
+    populateSelect();
+    loadSaved();
+    
+    // 預設選中第一個，方便手機測試
+    // presetSelect.value = "0"; 
+  
+    // events
+    $("saveBtn").addEventListener("click", saveInput);
+    $("clearBtn").addEventListener("click", clearInput);
+  
+    $("copyBtn").addEventListener("click", async () => {
+      const combined = buildCombined();
+      if (!combined.trim()) {
+        showToast("⚠️ 沒有內容可複製");
+        return;
+      }
+      const ok = await copyToClipboard(combined);
+      showToast(ok ? "📋 複製成功！" : "複製失敗（請手動複製）");
+    });
+  </script>
+</body>
+</html>
