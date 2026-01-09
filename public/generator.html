@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE 貼圖自動生成器</title>
+  <style>
+    :root {
+      --primary-color: #06c755;
+      --primary-hover: #05b34c;
+      --danger-color: #ff4d4f;
+      --bg-color: #f2f4f6;
+      --card-bg: #ffffff;
+      --text-main: #111111;
+      --text-sub: #888888;
+      --border-color: #e6e6e6;
+      --success-color: #52c41a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--text-sub);
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--primary-color);
+      color: white;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 12px;
+    }
+
+    .upload-area:hover {
+      border-color: var(--primary-color);
+      background: rgba(6, 199, 85, 0.05);
+    }
+
+    .upload-area.dragover {
+      border-color: var(--primary-color);
+      background: rgba(6, 199, 85, 0.1);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .upload-text {
+      color: var(--text-sub);
+      font-size: 14px;
+    }
+
+    .preview-container {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .preview-box {
+      flex: 1;
+      text-align: center;
+    }
+
+    .preview-box img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .preview-label {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+      width: 100%;
+      font-size: 18px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .mode-option {
+      flex: 1;
+      padding: 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .mode-option:hover {
+      border-color: var(--primary-color);
+      background: rgba(6, 199, 85, 0.05);
+    }
+
+    .mode-option input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+    }
+
+    .mode-option.selected {
+      border-color: var(--primary-color);
+      background: rgba(6, 199, 85, 0.1);
+    }
+
+    select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    details {
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary-color);
+      user-select: none;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::before {
+      content: '▶ ';
+      display: inline-block;
+      transition: transform 0.3s;
+    }
+
+    details[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    .prompt-content {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.8;
+      color: #333;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .progress-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #f0f0f0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .progress-text {
+      text-align: center;
+      color: var(--text-sub);
+      font-size: 14px;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .result-item {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      background: white;
+    }
+
+    .result-item img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .result-title {
+      font-size: 12px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .result-status {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .status-success {
+      background: #f6ffed;
+      color: var(--success-color);
+    }
+
+    .status-failed {
+      background: #fff1f0;
+      color: var(--danger-color);
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .alert-info {
+      background: #e6f7ff;
+      color: #0958d9;
+      border: 1px solid #91d5ff;
+    }
+
+    .alert-warning {
+      background: #fffbe6;
+      color: #d48806;
+      border: 1px solid #ffe58f;
+    }
+
+    .alert-success {
+      background: #f6ffed;
+      color: #389e0d;
+      border: 1px solid #b7eb8f;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .preview-container {
+        flex-direction: column;
+      }
+      
+      .mode-selector {
+        flex-direction: column;
+      }
+      
+      .results-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 LINE 貼圖自動生成器</h1>
+    <p class="subtitle">使用 ChatGPT 自動生成 LINE 貼圖</p>
+
+    <!-- 警告訊息 -->
+    <div class="alert alert-warning">
+      ⚠️ <strong>重要提醒：</strong>此工具使用 Playwright 自動化 ChatGPT 網頁版，首次使用需要手動登入。請確保您有 ChatGPT Plus 訂閱。
+    </div>
+
+    <!-- 步驟 1: 上傳圖片 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="step-number">1</span>
+        上傳母圖和錨點圖
+      </div>
+
+      <div class="upload-area" id="motherUploadArea">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">
+          <strong>點擊或拖曳上傳母圖</strong><br>
+          <small>原始角色範例圖片</small>
+        </div>
+        <input type="file" id="motherImageInput" accept="image/*">
+      </div>
+
+      <div class="upload-area" id="anchorUploadArea">
+        <div class="upload-icon">🎯</div>
+        <div class="upload-text">
+          <strong>點擊或拖曳上傳錨點圖</strong><br>
+          <small>風格參考圖片</small>
+        </div>
+        <input type="file" id="anchorImageInput" accept="image/*">
+      </div>
+
+      <div class="preview-container hidden" id="previewContainer">
+        <div class="preview-box">
+          <img id="motherPreview" alt="母圖預覽">
+          <div class="preview-label">母圖</div>
+        </div>
+        <div class="preview-box">
+          <img id="anchorPreview" alt="錨點圖預覽">
+          <div class="preview-label">錨點圖</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步驟 2: 設定生成選項 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="step-number">2</span>
+        設定生成選項
+      </div>
+
+      <!-- 生成模式選擇 -->
+      <div class="mode-selector">
+        <label class="mode-option selected" id="modeAll">
+          <input type="radio" name="generateMode" value="all" checked>
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">生成全部 40 張</div>
+            <div style="font-size: 12px; color: var(--text-sub);">預計 10-20 分鐘</div>
+          </div>
+        </label>
+        <label class="mode-option" id="modeSingle">
+          <input type="radio" name="generateMode" value="single">
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">只生成單張</div>
+            <div style="font-size: 12px; color: var(--text-sub);">選擇特定貼圖</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- 單張選擇下拉選單 -->
+      <div id="singleSelectContainer" class="hidden">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">選擇要生成的貼圖</label>
+        <select id="stickerSelect">
+          <option value="">請選擇...</option>
+        </select>
+      </div>
+
+      <!-- 顯示產圖文字敘述（可編輯） -->
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+          📝 產圖 Prompt 說明
+          <span style="font-size: 12px; color: var(--text-sub); font-weight: normal;">（可自由修改）</span>
+        </label>
+        <textarea id="promptText" style="width: 100%; min-height: 300px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px; line-height: 1.6; font-family: 'Courier New', monospace; resize: vertical;">請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+
+【角色一致性（最高優先）】
+- 角色只能有「一個人」
+- 臉型、五官比例、眼型、鼻型、嘴型、臉部氣質 必須與「母圖」完全一致
+- 髮型、髮色、服裝、配色、畫風 必須同時符合「母圖」與「錨點圖」
+- 若母圖與錨點圖有任何差異， 一律以「母圖」為最終標準
+- 禁止融合、重新詮釋或美化角色外觀
+- 禁止生成新角色或改變角色設定
+
+【畫風與用途】
+- 寫實素描風格
+- 線條清楚、顏色柔和
+- 表情誇張但可愛（不可破壞臉型與五官比例）
+- 適合作為 LINE 原創靜態貼圖
+
+【LINE 官方上架規範（必須遵守）】
+- 圖片尺寸：370 x 320 px
+- 圖片格式：PNG
+- 背景：透明
+- 檔案大小：小於 1MB
+- 角色不可貼邊裁切，四周保留安全邊界
+- 角色需清楚可辨
+- 文字清楚可讀，不可過小
+- 不可包含任何商標、品牌或侵權角色
+
+【構圖要求】
+- 單一角色
+- 半身或全身皆可
+- 角色置中
+- 背景保持透明
+
+【重要限制（請嚴格遵守）】
+- 表情與動作只能改變「肢體與情緒」 不可改變臉型、五官比例或角色氣質
+- 不可加入多餘物件或背景
+- 不可改變畫風或風格
+
+請只輸出「一張符合 LINE 規範的貼圖圖片」</textarea>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <button type="button" onclick="savePrompt()" style="flex: 1; padding: 8px; font-size: 14px; background: #f0f0f0; color: #555; border-radius: 8px;">
+            💾 儲存 Prompt
+          </button>
+          <button type="button" onclick="resetPrompt()" style="flex: 1; padding: 8px; font-size: 14px; background: #fff0f0; color: var(--danger-color); border-radius: 8px;">
+            🔄 恢復預設
+          </button>
+        </div>
+        <div style="font-size: 12px; color: var(--text-sub); margin-top: 8px;">
+          💡 提示：修改後的 Prompt 會自動儲存在瀏覽器中，下次開啟時會自動載入。
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        💡 生成過程中請勿關閉瀏覽器。首次使用需要手動登入 ChatGPT。
+      </div>
+
+      <button class="btn-primary" id="generateBtn" disabled>
+        <span id="generateBtnText">🚀 開始生成</span>
+      </button>
+
+      <!-- 進度條 -->
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+        <div class="progress-text" id="progressText">準備中...</div>
+      </div>
+    </div>
+
+    <!-- 步驟 3: 查看結果 -->
+    <div class="card hidden" id="resultsCard">
+      <div class="card-title">
+        <span class="step-number">3</span>
+        生成結果
+      </div>
+
+      <div class="alert alert-success" id="successAlert">
+        🎉 成功生成 <strong id="successCount">0</strong> 張貼圖！
+      </div>
+
+      <button class="btn-primary" id="downloadAllBtn">
+        📦 下載所有貼圖 (ZIP)
+      </button>
+
+      <div class="results-grid" id="resultsGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    let motherImageFile = null;
+    let anchorImageFile = null;
+    let uploadedFiles = null;
+    let allPresets = [];
+
+    // 預設 Prompt
+    const DEFAULT_PROMPT = `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+
+【角色一致性（最高優先）】
+- 角色只能有「一個人」
+- 臉型、五官比例、眼型、鼻型、嘴型、臉部氣質 必須與「母圖」完全一致
+- 髮型、髮色、服裝、配色、畫風 必須同時符合「母圖」與「錨點圖」
+- 若母圖與錨點圖有任何差異， 一律以「母圖」為最終標準
+- 禁止融合、重新詮釋或美化角色外觀
+- 禁止生成新角色或改變角色設定
+
+【畫風與用途】
+- 寫實素描風格
+- 線條清楚、顏色柔和
+- 表情誇張但可愛（不可破壞臉型與五官比例）
+- 適合作為 LINE 原創靜態貼圖
+
+【LINE 官方上架規範（必須遵守）】
+- 圖片尺寸：370 x 320 px
+- 圖片格式：PNG
+- 背景：透明
+- 檔案大小：小於 1MB
+- 角色不可貼邊裁切，四周保留安全邊界
+- 角色需清楚可辨
+- 文字清楚可讀，不可過小
+- 不可包含任何商標、品牌或侵權角色
+
+【構圖要求】
+- 單一角色
+- 半身或全身皆可
+- 角色置中
+- 背景保持透明
+
+【重要限制（請嚴格遵守）】
+- 表情與動作只能改變「肢體與情緒」 不可改變臉型、五官比例或角色氣質
+- 不可加入多餘物件或背景
+- 不可改變畫風或風格
+
+請只輸出「一張符合 LINE 規範的貼圖圖片」`;
+
+    // DOM 元素
+    const motherUploadArea = document.getElementById('motherUploadArea');
+    const anchorUploadArea = document.getElementById('anchorUploadArea');
+    const motherImageInput = document.getElementById('motherImageInput');
+    const anchorImageInput = document.getElementById('anchorImageInput');
+    const motherPreview = document.getElementById('motherPreview');
+    const anchorPreview = document.getElementById('anchorPreview');
+    const previewContainer = document.getElementById('previewContainer');
+    const generateBtn = document.getElementById('generateBtn');
+    const generateBtnText = document.getElementById('generateBtnText');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsGrid = document.getElementById('resultsGrid');
+    const successCount = document.getElementById('successCount');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const modeAll = document.getElementById('modeAll');
+    const modeSingle = document.getElementById('modeSingle');
+    const singleSelectContainer = document.getElementById('singleSelectContainer');
+    const stickerSelect = document.getElementById('stickerSelect');
+    const promptText = document.getElementById('promptText');
+
+    // Prompt 管理函數
+    function savePrompt() {
+      const prompt = promptText.value;
+      localStorage.setItem('customPrompt', prompt);
+      alert('✅ Prompt 已儲存！');
+    }
+
+    function resetPrompt() {
+      if (confirm('確定要恢復預設 Prompt 嗎？')) {
+        promptText.value = DEFAULT_PROMPT;
+        localStorage.removeItem('customPrompt');
+        alert('🔄 已恢復預設 Prompt');
+      }
+    }
+
+    function loadPrompt() {
+      const saved = localStorage.getItem('customPrompt');
+      if (saved) {
+        promptText.value = saved;
+      }
+    }
+
+    // 載入預設貼圖清單
+    async function loadPresets() {
+      try {
+        const response = await fetch('/presets.json');
+        allPresets = await response.json();
+        
+        // 填充下拉選單
+        allPresets.forEach((preset, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = `${index + 1}. ${preset.title}`;
+          stickerSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('載入預設失敗：', error);
+      }
+    }
+
+    // 初始化
+    loadPresets();
+    loadPrompt();
+
+    // 模式切換
+    document.querySelectorAll('input[name="generateMode"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        // 更新選中樣式
+        modeAll.classList.toggle('selected', e.target.value === 'all');
+        modeSingle.classList.toggle('selected', e.target.value === 'single');
+        
+        // 顯示/隱藏單張選擇
+        if (e.target.value === 'single') {
+          singleSelectContainer.classList.remove('hidden');
+          updateGenerateButton();
+        } else {
+          singleSelectContainer.classList.add('hidden');
+          updateGenerateButton();
+        }
+      });
+    });
+
+    // 單張選擇變更
+    stickerSelect.addEventListener('change', updateGenerateButton);
+
+    // 更新生成按鈕文字
+    function updateGenerateButton() {
+      const mode = document.querySelector('input[name="generateMode"]:checked').value;
+      
+      if (mode === 'all') {
+        generateBtnText.textContent = '🚀 開始生成全部 40 張貼圖';
+      } else {
+        const selectedIndex = stickerSelect.value;
+        if (selectedIndex !== '') {
+          const preset = allPresets[selectedIndex];
+          generateBtnText.textContent = `🚀 生成「${preset.title}」貼圖`;
+        } else {
+          generateBtnText.textContent = '🚀 請先選擇貼圖';
+        }
+      }
+      
+      checkReadyToGenerate();
+    }
+
+    // 檢查是否可以開始生成
+    function checkReadyToGenerate() {
+      const mode = document.querySelector('input[name="generateMode"]:checked').value;
+      const hasImages = motherImageFile && anchorImageFile;
+      const singleSelected = mode === 'single' ? stickerSelect.value !== '' : true;
+      
+      generateBtn.disabled = !(hasImages && singleSelected);
+    }
+
+    // 上傳區域點擊事件
+    motherUploadArea.addEventListener('click', () => motherImageInput.click());
+    anchorUploadArea.addEventListener('click', () => anchorImageInput.click());
+
+    // 檔案選擇事件
+    motherImageInput.addEventListener('change', (e) => handleFileSelect(e, 'mother'));
+    anchorImageInput.addEventListener('change', (e) => handleFileSelect(e, 'anchor'));
+
+    // 拖曳上傳
+    setupDragAndDrop(motherUploadArea, motherImageInput, 'mother');
+    setupDragAndDrop(anchorUploadArea, anchorImageInput, 'anchor');
+
+    // 處理檔案選擇
+    function handleFileSelect(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (type === 'mother') {
+        motherImageFile = file;
+        previewImage(file, motherPreview);
+      } else {
+        anchorImageFile = file;
+        previewImage(file, anchorPreview);
+      }
+
+      checkReadyToGenerate();
+    }
+
+    // 預覽圖片
+    function previewImage(file, imgElement) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imgElement.src = e.target.result;
+        previewContainer.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 設定拖曳上傳
+    function setupDragAndDrop(area, input, type) {
+      area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('dragover');
+      });
+
+      area.addEventListener('dragleave', () => {
+        area.classList.remove('dragover');
+      });
+
+      area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          input.files = dataTransfer.files;
+          handleFileSelect({ target: input }, type);
+        }
+      });
+    }
+
+    // 開始生成
+    generateBtn.addEventListener('click', async () => {
+      try {
+        generateBtn.disabled = true;
+        progressContainer.style.display = 'block';
+        resultsCard.classList.add('hidden');
+
+        // 上傳圖片
+        progressText.textContent = '上傳圖片中...';
+        const formData = new FormData();
+        formData.append('motherImage', motherImageFile);
+        formData.append('anchorImage', anchorImageFile);
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error);
+        }
+
+        uploadedFiles = uploadResult.files;
+
+        // 準備生成參數
+        const mode = document.querySelector('input[name="generateMode"]:checked').value;
+        let selectedPresets = [];
+        
+        if (mode === 'single') {
+          const index = parseInt(stickerSelect.value);
+          selectedPresets = [index];
+        }
+
+        // 開始生成
+        progressText.textContent = '開始生成貼圖...';
+        const generateResponse = await fetch('/api/generate/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            motherImagePath: uploadedFiles.motherImage.path,
+            anchorImagePath: uploadedFiles.anchorImage.path,
+            selectedPresets: selectedPresets
+          })
+        });
+
+        const generateResult = await generateResponse.json();
+        if (!generateResult.success) {
+          throw new Error(generateResult.error);
+        }
+
+        // 輪詢進度
+        pollProgress();
+
+      } catch (error) {
+        alert('錯誤：' + error.message);
+        generateBtn.disabled = false;
+        progressContainer.style.display = 'none';
+      }
+    });
+
+    // 輪詢進度
+    async function pollProgress() {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch('/api/generate/status');
+          const data = await response.json();
+          const task = data.task;
+
+          if (task.status === 'running') {
+            const progress = Math.round((task.progress / task.total) * 100);
+            progressFill.style.width = progress + '%';
+            progressFill.textContent = progress + '%';
+            progressText.textContent = `正在生成第 ${task.progress}/${task.total} 張貼圖...`;
+          } else if (task.status === 'completed') {
+            clearInterval(interval);
+            progressFill.style.width = '100%';
+            progressFill.textContent = '100%';
+            progressText.textContent = '生成完成！';
+            showResults(task.results);
+          } else if (task.status === 'failed') {
+            clearInterval(interval);
+            alert('生成失敗：' + task.error);
+            generateBtn.disabled = false;
+          }
+        } catch (error) {
+          console.error('輪詢錯誤：', error);
+        }
+      }, 2000);
+    }
+
+    // 顯示結果
+    function showResults(results) {
+      resultsCard.classList.remove('hidden');
+      const success = results.filter(r => r.success).length;
+      successCount.textContent = success;
+
+      resultsGrid.innerHTML = '';
+      results.forEach(result => {
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        
+        if (result.success) {
+          item.innerHTML = `
+            <img src="/${result.path}" alt="${result.title}">
+            <div class="result-title">${result.title}</div>
+            <span class="result-status status-success">✓ 成功</span>
+          `;
+        } else {
+          item.innerHTML = `
+            <div class="result-title">${result.title}</div>
+            <span class="result-status status-failed">✗ 失敗</span>
+          `;
+        }
+        
+        resultsGrid.appendChild(item);
+      });
+
+      generateBtn.disabled = false;
+      checkReadyToGenerate();
+    }
+
+    // 下載所有貼圖
+    downloadAllBtn.addEventListener('click', () => {
+      window.location.href = '/api/download-all';
+    });
+  </script>
+</body>
+</html>
