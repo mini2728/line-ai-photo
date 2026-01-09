@@ -224,7 +224,7 @@ class ChatGPTAutomation {
   }
 
   /**
-   * 等待 ChatGPT 回應完成（偵測圖片生成）
+   * 等待 ChatGPT 回應完成（確保圖片完全生成）
    */
   async waitForResponse() {
     console.log('⏳ 等待 ChatGPT 生成圖片...');
@@ -233,74 +233,75 @@ class ChatGPTAutomation {
     const maxWaitTime = 15 * 60 * 1000; // 最多等待 15 分鐘
     
     try {
-      // 方法 1: 等待「停止生成」按鈕出現並消失
+      // 步驟 1: 等待「停止生成」按鈕出現
       const stopButton = this.page.locator('button:has-text("Stop generating")');
       
-      // 等待按鈕出現（最多 30 秒）
+      console.log('⏳ 等待生成開始...');
       try {
-        await stopButton.waitFor({ state: 'visible', timeout: 30000 });
-        console.log('⏳ 正在生成圖片...');
+        await stopButton.waitFor({ state: 'visible', timeout: 60000 });
+        console.log('✅ 開始生成圖片');
       } catch (e) {
-        // 如果沒有出現停止按鈕，可能已經生成完成
-        console.log('⏳ 未偵測到生成按鈕，嘗試偵測圖片...');
+        console.log('⚠️ 未偵測到生成按鈕，可能已經開始生成');
       }
 
-      // 等待按鈕消失（最多 15 分鐘）
+      // 步驟 2: 等待「停止生成」按鈕消失（表示生成完成）
+      console.log('⏳ 等待生成完成...');
       try {
         await stopButton.waitFor({ state: 'hidden', timeout: maxWaitTime });
         console.log('✅ 生成按鈕已消失');
       } catch (e) {
-        console.log('⚠️ 等待超時，嘗試偵測圖片...');
+        console.log('⚠️ 等待超時');
       }
 
-      // 方法 2: 偵測圖片是否已生成
-      console.log('🔍 偵測生成的圖片...');
+      // 步驟 3: 額外等待 30 秒確保圖片完全載入和渲染
+      console.log('⏳ 等待圖片完全載入（30 秒）...');
+      await this.page.waitForTimeout(30000);
+
+      // 步驟 4: 驗證圖片是否真的存在且可下載
+      console.log('🔍 驗證圖片是否可下載...');
       const imageSelectors = [
-        'img[alt*="Generated"]',
         'img[src*="dalle"]',
         'img[src*="oaidalleapiprodscus"]',
+        'img[src*="blob:"]',
+        'img[src^="data:image"]',
         'div[data-message-author-role="assistant"] img'
       ];
 
-      let imageFound = false;
-      for (let attempt = 1; attempt <= 30; attempt++) {
-        for (const selector of imageSelectors) {
-          try {
-            const images = await this.page.locator(selector).all();
-            if (images.length > 0) {
-              console.log(`✅ 偵測到圖片（${selector}）`);
-              imageFound = true;
+      let validImageFound = false;
+      for (const selector of imageSelectors) {
+        try {
+          const images = await this.page.locator(selector).all();
+          if (images.length > 0) {
+            // 檢查最後一張圖片是否有有效的 src
+            const lastImage = images[images.length - 1];
+            const src = await lastImage.getAttribute('src');
+            if (src && src.length > 50) {
+              console.log(`✅ 找到有效圖片（${selector}）`);
+              validImageFound = true;
               break;
             }
-          } catch (e) {
-            // 繼續嘗試
           }
+        } catch (e) {
+          // 繼續嘗試
         }
-        
-        if (imageFound) break;
-        
-        // 每 10 秒檢查一次
-        if (attempt % 6 === 0) {
-          const elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log(`⏳ 已等待 ${elapsed} 秒，繼續偵測圖片...`);
-        }
-        await this.page.waitForTimeout(10000);
       }
 
-      if (!imageFound) {
-        console.log('⚠️ 未偵測到圖片，但繼續執行下載步驟');
+      if (!validImageFound) {
+        console.log('⚠️ 未找到有效圖片，額外等待 30 秒...');
+        await this.page.waitForTimeout(30000);
       }
 
-      // 額外等待確保圖片完全載入
-      await this.page.waitForTimeout(5000);
+      // 步驟 5: 最後再等待 10 秒確保一切穩定
+      console.log('⏳ 最後確認（10 秒）...');
+      await this.page.waitForTimeout(10000);
       
       const totalTime = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`✅ 回應完成（總耗時：${totalTime} 秒）`);
+      console.log(`✅ 圖片生成完成（總耗時：${totalTime} 秒）`);
 
     } catch (error) {
       console.error(`⚠️ 等待回應時發生錯誤：${error.message}`);
-      // 等待一段時間後繼續
-      await this.page.waitForTimeout(10000);
+      // 發生錯誤也等待一段時間
+      await this.page.waitForTimeout(30000);
     }
   }
 
@@ -312,24 +313,47 @@ class ChatGPTAutomation {
     
     try {
       // 等待圖片載入
-      await this.page.waitForTimeout(3000);
+      await this.page.waitForTimeout(5000);
 
       // 尋找生成的圖片（多種可能的選擇器）
       const selectors = [
         'img[alt*="Generated"]',
         'img[src*="dalle"]',
         'img[src*="oaidalleapiprodscus"]',
-        'div[data-message-author-role="assistant"] img'
+        'img[src*="blob:"]',
+        'img[src^="data:image"]',
+        'div[data-message-author-role="assistant"] img',
+        'img'  // 最後嘗試所有圖片
       ];
 
       let images = [];
+      let usedSelector = '';
+      
       for (const selector of selectors) {
-        images = await this.page.locator(selector).all();
-        if (images.length > 0) break;
+        try {
+          images = await this.page.locator(selector).all();
+          if (images.length > 0) {
+            usedSelector = selector;
+            console.log(`🔍 使用選擇器：${selector}（找到 ${images.length} 張圖片）`);
+            break;
+          }
+        } catch (e) {
+          // 繼續嘗試下一個
+        }
       }
 
       if (images.length === 0) {
         console.error('❌ 找不到生成的圖片');
+        
+        // 嘗試截圖以便除錯
+        try {
+          const debugPath = `debug-no-image-${Date.now()}.png`;
+          await this.page.screenshot({ path: debugPath, fullPage: true });
+          console.log(`📸 除錯截圖已儲存：${debugPath}`);
+        } catch (e) {
+          // 忽略截圖錯誤
+        }
+        
         return false;
       }
 
@@ -342,12 +366,29 @@ class ChatGPTAutomation {
         return false;
       }
 
-      // 下載圖片
-      console.log(`📥 下載中：${imgSrc.substring(0, 50)}...`);
+      console.log(`📥 下載中：${imgSrc.substring(0, 80)}...`);
       
-      // 使用 Playwright 的 request 下載
-      const response = await this.page.request.get(imgSrc);
-      const buffer = await response.body();
+      // 處理不同類型的圖片 URL
+      let buffer;
+      
+      if (imgSrc.startsWith('data:image')) {
+        // Data URL - 直接解碼
+        const base64Data = imgSrc.split(',')[1];
+        buffer = Buffer.from(base64Data, 'base64');
+        console.log('✅ 從 Data URL 解碼');
+      } else if (imgSrc.startsWith('blob:')) {
+        // Blob URL - 需要特殊處理
+        console.log('⚠️ Blob URL 需要特殊處理，嘗試截圖...');
+        
+        // 截取圖片元素
+        buffer = await lastImage.screenshot();
+        console.log('✅ 從元素截圖');
+      } else {
+        // HTTP URL - 使用 request 下載
+        const response = await this.page.request.get(imgSrc);
+        buffer = await response.body();
+        console.log('✅ 從 HTTP URL 下載');
+      }
 
       // 確保目錄存在
       const dir = path.dirname(savePath);
@@ -357,12 +398,22 @@ class ChatGPTAutomation {
 
       // 儲存檔案
       fs.writeFileSync(savePath, buffer);
-      console.log(`✅ 已儲存：${savePath}`);
+      console.log(`✅ 已儲存：${savePath}（${Math.round(buffer.length / 1024)} KB）`);
       
       return true;
 
     } catch (error) {
       console.error(`❌ 下載失敗：${error.message}`);
+      
+      // 嘗試截圖以便除錯
+      try {
+        const errorPath = `error-download-${Date.now()}.png`;
+        await this.page.screenshot({ path: errorPath, fullPage: true });
+        console.log(`📸 錯誤截圖已儲存：${errorPath}`);
+      } catch (e) {
+        // 忽略截圖錯誤
+      }
+      
       return false;
     }
   }
