@@ -441,24 +441,33 @@
           <input type="radio" name="generateMode" value="all" checked>
           <div>
             <div style="font-weight: 600; margin-bottom: 4px;">生成全部 40 張</div>
-            <div style="font-size: 12px; color: var(--text-sub);">預計 10-20 分鐘</div>
+            <div style="font-size: 12px; color: var(--text-sub);">預計 2-4 小時</div>
           </div>
         </label>
-        <label class="mode-option" id="modeSingle">
-          <input type="radio" name="generateMode" value="single">
+        <label class="mode-option" id="modeMultiple">
+          <input type="radio" name="generateMode" value="multiple">
           <div>
-            <div style="font-weight: 600; margin-bottom: 4px;">只生成單張</div>
-            <div style="font-size: 12px; color: var(--text-sub);">選擇特定貼圖</div>
+            <div style="font-weight: 600; margin-bottom: 4px;">選擇多張生成</div>
+            <div style="font-size: 12px; color: var(--text-sub);">勾選想要的貼圖</div>
           </div>
         </label>
       </div>
 
-      <!-- 單張選擇下拉選單 -->
-      <div id="singleSelectContainer" class="hidden">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">選擇要生成的貼圖</label>
-        <select id="stickerSelect">
-          <option value="">請選擇...</option>
-        </select>
+      <!-- 多選 checkbox 列表 -->
+      <div id="multipleSelectContainer" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <label style="font-weight: 600;">選擇要生成的貼圖</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="selectAllBtn" style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">全選</button>
+            <button type="button" id="deselectAllBtn" style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">取消全選</button>
+          </div>
+        </div>
+        <div id="stickerCheckboxList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: white;">
+          <!-- Checkboxes will be populated here -->
+        </div>
+        <div style="margin-top: 8px; font-size: 13px; color: var(--text-sub);">
+          已選擇：<span id="selectedCount" style="font-weight: 600; color: var(--primary-color);">0</span> 張
+        </div>
       </div>
 
       <!-- 顯示產圖文字敘述（可編輯） -->
@@ -618,9 +627,12 @@
     const successCount = document.getElementById('successCount');
     const downloadAllBtn = document.getElementById('downloadAllBtn');
     const modeAll = document.getElementById('modeAll');
-    const modeSingle = document.getElementById('modeSingle');
-    const singleSelectContainer = document.getElementById('singleSelectContainer');
-    const stickerSelect = document.getElementById('stickerSelect');
+    const modeMultiple = document.getElementById('modeMultiple');
+    const multipleSelectContainer = document.getElementById('multipleSelectContainer');
+    const stickerCheckboxList = document.getElementById('stickerCheckboxList');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    const selectedCount = document.getElementById('selectedCount');
     const promptText = document.getElementById('promptText');
 
     // Prompt 管理函數
@@ -651,12 +663,28 @@
         const response = await fetch('/presets.json');
         allPresets = await response.json();
         
-        // 填充下拉選單
+        // 填充 checkbox 列表
         allPresets.forEach((preset, index) => {
-          const option = document.createElement('option');
-          option.value = index;
-          option.textContent = `${index + 1}. ${preset.title}`;
-          stickerSelect.appendChild(option);
+          const checkboxItem = document.createElement('label');
+          checkboxItem.style.cssText = 'display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;';
+          checkboxItem.onmouseover = () => checkboxItem.style.background = '#f9f9f9';
+          checkboxItem.onmouseout = () => checkboxItem.style.background = 'white';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = index;
+          checkbox.id = `sticker-${index}`;
+          checkbox.className = 'sticker-checkbox';
+          checkbox.style.cssText = 'width: 18px; height: 18px; margin-right: 10px; cursor: pointer;';
+          checkbox.addEventListener('change', updateSelectedCount);
+          
+          const label = document.createElement('span');
+          label.textContent = `${index + 1}. ${preset.title}`;
+          label.style.cssText = 'flex: 1; cursor: pointer;';
+          
+          checkboxItem.appendChild(checkbox);
+          checkboxItem.appendChild(label);
+          stickerCheckboxList.appendChild(checkboxItem);
         });
       } catch (error) {
         console.error('載入預設失敗：', error);
@@ -667,26 +695,42 @@
     loadPresets();
     loadPrompt();
 
+    // 更新選擇數量
+    function updateSelectedCount() {
+      const checkboxes = document.querySelectorAll('.sticker-checkbox:checked');
+      selectedCount.textContent = checkboxes.length;
+      updateGenerateButton();
+    }
+
+    // 全選按鈕
+    selectAllBtn.addEventListener('click', () => {
+      document.querySelectorAll('.sticker-checkbox').forEach(cb => cb.checked = true);
+      updateSelectedCount();
+    });
+
+    // 取消全選按鈕
+    deselectAllBtn.addEventListener('click', () => {
+      document.querySelectorAll('.sticker-checkbox').forEach(cb => cb.checked = false);
+      updateSelectedCount();
+    });
+
     // 模式切換
     document.querySelectorAll('input[name="generateMode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         // 更新選中樣式
         modeAll.classList.toggle('selected', e.target.value === 'all');
-        modeSingle.classList.toggle('selected', e.target.value === 'single');
+        modeMultiple.classList.toggle('selected', e.target.value === 'multiple');
         
-        // 顯示/隱藏單張選擇
-        if (e.target.value === 'single') {
-          singleSelectContainer.classList.remove('hidden');
+        // 顯示/隱藏多選區域
+        if (e.target.value === 'multiple') {
+          multipleSelectContainer.classList.remove('hidden');
           updateGenerateButton();
         } else {
-          singleSelectContainer.classList.add('hidden');
+          multipleSelectContainer.classList.add('hidden');
           updateGenerateButton();
         }
       });
     });
-
-    // 單張選擇變更
-    stickerSelect.addEventListener('change', updateGenerateButton);
 
     // 更新生成按鈕文字
     function updateGenerateButton() {
@@ -695,12 +739,12 @@
       if (mode === 'all') {
         generateBtnText.textContent = '🚀 開始生成全部 40 張貼圖';
       } else {
-        const selectedIndex = stickerSelect.value;
-        if (selectedIndex !== '') {
-          const preset = allPresets[selectedIndex];
-          generateBtnText.textContent = `🚀 生成「${preset.title}」貼圖`;
+        const checkedBoxes = document.querySelectorAll('.sticker-checkbox:checked');
+        const count = checkedBoxes.length;
+        if (count > 0) {
+          generateBtnText.textContent = `🚀 開始生成選中的 ${count} 張貼圖`;
         } else {
-          generateBtnText.textContent = '🚀 請先選擇貼圖';
+          generateBtnText.textContent = '🚀 請先勾選貼圖';
         }
       }
       
@@ -711,9 +755,9 @@
     function checkReadyToGenerate() {
       const mode = document.querySelector('input[name="generateMode"]:checked').value;
       const hasImages = motherImageFile && anchorImageFile;
-      const singleSelected = mode === 'single' ? stickerSelect.value !== '' : true;
+      const multipleSelected = mode === 'multiple' ? document.querySelectorAll('.sticker-checkbox:checked').length > 0 : true;
       
-      generateBtn.disabled = !(hasImages && singleSelected);
+      generateBtn.disabled = !(hasImages && multipleSelected);
     }
 
     // 上傳區域點擊事件
@@ -807,10 +851,10 @@
         // 準備生成參數
         const mode = document.querySelector('input[name="generateMode"]:checked').value;
         let selectedPresets = [];
-        
-        if (mode === 'single') {
-          const index = parseInt(stickerSelect.value);
-          selectedPresets = [index];
+
+        if (mode === 'multiple') {
+          const checkedBoxes = document.querySelectorAll('.sticker-checkbox:checked');
+          selectedPresets = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
         }
 
         // 開始生成
