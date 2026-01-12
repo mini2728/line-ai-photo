@@ -340,6 +340,36 @@
       font-size: 14px;
     }
 
+    /* 下載按鈕樣式 */
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: var(--success-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .btn-download:hover {
+      background: #389e0d;
+      transform: translateY(-1px);
+    }
+
+    .btn-download svg {
+      width: 14px;
+      height: 14px;
+    }
+
     .alert-info {
       background: #e6f7ff;
       color: #0958d9;
@@ -931,10 +961,18 @@
         item.className = 'result-item';
         
         if (result.success) {
+          // 取得路徑中的檔名
+          const pathParts = result.path.split(/[\\/]/);
+          const filename = pathParts[pathParts.length - 1];
+
           item.innerHTML = `
             <img src="/${result.path}" alt="${result.title}">
             <div class="result-title">${result.title}</div>
-            <span class="result-status status-success">✓ 成功</span>
+            <span class="result-status status-success" style="margin-bottom: 8px;">✓ 成功</span>
+            <button class="btn-download" onclick="downloadSingle('${filename}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              下載
+            </button>
           `;
         } else {
           item.innerHTML = `
@@ -948,6 +986,11 @@
 
       generateBtn.disabled = false;
       checkReadyToGenerate();
+    }
+
+    // 下載單張貼圖
+    function downloadSingle(filename) {
+      window.location.href = `/api/download/${filename}`;
     }
 
     // 下載所有貼圖
