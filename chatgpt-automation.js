@@ -421,7 +421,7 @@ class ChatGPTAutomation {
   /**
    * 批次生成所有貼圖
    */
-  async generateStickers(presets, motherImgPath, anchorImgPath, outputDir = 'output') {
+  async generateStickers(presets, motherImgPath, anchorImgPath, outputDir = 'output', customPrompt = null) {
     const results = [];
     const startTime = Date.now();
 
@@ -430,9 +430,8 @@ class ChatGPTAutomation {
     console.log('🎨 ========================================\n');
 
     try {
-      // 讀取前端自訂的 Prompt（如果有）
-      const customPromptPath = path.join(__dirname, 'custom-prompt.txt');
-      let basePrompt = `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+      // 使用傳入的自訂 Prompt，如果沒有則使用預設值
+      let basePrompt = customPrompt || `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
 
 【角色一致性（最高優先）】
 - 角色只能有「一個人」
@@ -471,10 +470,10 @@ class ChatGPTAutomation {
 
 請只輸出「一張符合 LINE 規範的貼圖圖片」`;
 
-      // 如果有自訂 prompt，使用它
-      if (fs.existsSync(customPromptPath)) {
-        basePrompt = fs.readFileSync(customPromptPath, 'utf8');
-        console.log('✅ 使用自訂 Prompt');
+      if (customPrompt) {
+        console.log('✅ 使用前端自訂 Prompt');
+      } else {
+        console.log('✅ 使用預設 Prompt');
       }
 
       // 生成所有貼圖（每次都重新上傳母圖和錨點圖）

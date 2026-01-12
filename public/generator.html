@@ -859,13 +859,18 @@
 
         // 開始生成
         progressText.textContent = '開始生成貼圖...';
+        
+        // 取得自訂的 Prompt
+        const customPrompt = promptText.value.trim();
+        
         const generateResponse = await fetch('/api/generate/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             motherImagePath: uploadedFiles.motherImage.path,
             anchorImagePath: uploadedFiles.anchorImage.path,
-            selectedPresets: selectedPresets
+            selectedPresets: selectedPresets,
+            customPrompt: customPrompt  // 傳送自訂 Prompt
           })
         });
 

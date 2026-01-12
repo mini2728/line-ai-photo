@@ -128,7 +128,7 @@ app.post('/api/generate/start', async (req, res) => {
       });
     }
 
-    const { motherImagePath, anchorImagePath, selectedPresets } = req.body;
+    const { motherImagePath, anchorImagePath, selectedPresets, customPrompt } = req.body;
 
     if (!motherImagePath || !anchorImagePath) {
       return res.status(400).json({
@@ -166,7 +166,7 @@ app.post('/api/generate/start', async (req, res) => {
     });
 
     // 背景執行生成任務
-    generateStickersBackground(motherImagePath, anchorImagePath, presetsToGenerate);
+    generateStickersBackground(motherImagePath, anchorImagePath, presetsToGenerate, customPrompt);
 
   } catch (error) {
     res.status(500).json({
@@ -289,7 +289,7 @@ app.post('/api/reset', (req, res) => {
 /**
  * 背景執行生成任務
  */
-async function generateStickersBackground(motherImagePath, anchorImagePath, presets) {
+async function generateStickersBackground(motherImagePath, anchorImagePath, presets, customPrompt) {
   const bot = new ChatGPTAutomation();
 
   try {
@@ -306,7 +306,8 @@ async function generateStickersBackground(motherImagePath, anchorImagePath, pres
       presets,
       motherImagePath,
       anchorImagePath,
-      'output'
+      'output',
+      customPrompt  // 傳遞自訂 Prompt
     );
 
     // 更新任務狀態
