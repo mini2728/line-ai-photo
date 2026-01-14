@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,7 +56,7 @@
       border-radius: 16px;
       padding: 24px;
       margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       border: 1px solid var(--border-color);
     }
 
@@ -400,17 +401,18 @@
       .preview-container {
         flex-direction: column;
       }
-      
+
       .mode-selector {
         flex-direction: column;
       }
-      
+
       .results-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>🎨 LINE 貼圖自動生成器</h1>
@@ -488,11 +490,14 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <label style="font-weight: 600;">選擇要生成的貼圖</label>
           <div style="display: flex; gap: 8px;">
-            <button type="button" id="selectAllBtn" style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">全選</button>
-            <button type="button" id="deselectAllBtn" style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">取消全選</button>
+            <button type="button" id="selectAllBtn"
+              style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">全選</button>
+            <button type="button" id="deselectAllBtn"
+              style="padding: 6px 12px; font-size: 13px; background: #f0f0f0; color: #333;">取消全選</button>
           </div>
         </div>
-        <div id="stickerCheckboxList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: white;">
+        <div id="stickerCheckboxList"
+          style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: white;">
           <!-- Checkboxes will be populated here -->
         </div>
         <div style="margin-top: 8px; font-size: 13px; color: var(--text-sub);">
@@ -506,7 +511,8 @@
           📝 產圖 Prompt 說明
           <span style="font-size: 12px; color: var(--text-sub); font-weight: normal;">（可自由修改）</span>
         </label>
-        <textarea id="promptText" style="width: 100%; min-height: 300px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px; line-height: 1.6; font-family: 'Courier New', monospace; resize: vertical;">請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+        <textarea id="promptText"
+          style="width: 100%; min-height: 300px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px; line-height: 1.6; font-family: 'Courier New', monospace; resize: vertical;">請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
 
 【角色一致性（最高優先）】
 - 角色只能有「一個人」
@@ -545,10 +551,12 @@
 
 請只輸出「一張符合 LINE 規範的貼圖圖片」</textarea>
         <div style="display: flex; gap: 8px; margin-top: 8px;">
-          <button type="button" onclick="savePrompt()" style="flex: 1; padding: 8px; font-size: 14px; background: #f0f0f0; color: #555; border-radius: 8px;">
+          <button type="button" onclick="savePrompt()"
+            style="flex: 1; padding: 8px; font-size: 14px; background: #f0f0f0; color: #555; border-radius: 8px;">
             💾 儲存 Prompt
           </button>
-          <button type="button" onclick="resetPrompt()" style="flex: 1; padding: 8px; font-size: 14px; background: #fff0f0; color: var(--danger-color); border-radius: 8px;">
+          <button type="button" onclick="resetPrompt()"
+            style="flex: 1; padding: 8px; font-size: 14px; background: #fff0f0; color: var(--danger-color); border-radius: 8px;">
             🔄 恢復預設
           </button>
         </div>
@@ -598,6 +606,8 @@
     let anchorImageFile = null;
     let uploadedFiles = null;
     let allPresets = [];
+    let currentTaskId = null; // 紀錄當前的任務 ID
+    const LS_TASK_KEY = 'current_sticker_task_id'; // localStorage key
 
     // 預設 Prompt
     const DEFAULT_PROMPT = `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
@@ -692,14 +702,14 @@
       try {
         const response = await fetch('/presets.json');
         allPresets = await response.json();
-        
+
         // 填充 checkbox 列表
         allPresets.forEach((preset, index) => {
           const checkboxItem = document.createElement('label');
           checkboxItem.style.cssText = 'display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;';
           checkboxItem.onmouseover = () => checkboxItem.style.background = '#f9f9f9';
           checkboxItem.onmouseout = () => checkboxItem.style.background = 'white';
-          
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.value = index;
@@ -707,11 +717,11 @@
           checkbox.className = 'sticker-checkbox';
           checkbox.style.cssText = 'width: 18px; height: 18px; margin-right: 10px; cursor: pointer;';
           checkbox.addEventListener('change', updateSelectedCount);
-          
+
           const label = document.createElement('span');
           label.textContent = `${index + 1}. ${preset.title}`;
           label.style.cssText = 'flex: 1; cursor: pointer;';
-          
+
           checkboxItem.appendChild(checkbox);
           checkboxItem.appendChild(label);
           stickerCheckboxList.appendChild(checkboxItem);
@@ -724,6 +734,17 @@
     // 初始化
     loadPresets();
     loadPrompt();
+
+    // 檢查是否有儲存的任務需要恢復
+    window.addEventListener('load', () => {
+      const savedTaskId = localStorage.getItem(LS_TASK_KEY);
+      if (savedTaskId) {
+        currentTaskId = savedTaskId;
+        console.log('📡 偵測到未完成任務，正在恢復：', currentTaskId);
+        progressContainer.style.display = 'block';
+        pollProgress();
+      }
+    });
 
     // 更新選擇數量
     function updateSelectedCount() {
@@ -750,7 +771,7 @@
         // 更新選中樣式
         modeAll.classList.toggle('selected', e.target.value === 'all');
         modeMultiple.classList.toggle('selected', e.target.value === 'multiple');
-        
+
         // 顯示/隱藏多選區域
         if (e.target.value === 'multiple') {
           multipleSelectContainer.classList.remove('hidden');
@@ -765,7 +786,7 @@
     // 更新生成按鈕文字
     function updateGenerateButton() {
       const mode = document.querySelector('input[name="generateMode"]:checked').value;
-      
+
       if (mode === 'all') {
         generateBtnText.textContent = '🚀 開始生成全部 40 張貼圖';
       } else {
@@ -777,7 +798,7 @@
           generateBtnText.textContent = '🚀 請先勾選貼圖';
         }
       }
-      
+
       checkReadyToGenerate();
     }
 
@@ -786,7 +807,7 @@
       const mode = document.querySelector('input[name="generateMode"]:checked').value;
       const hasImages = motherImageFile && anchorImageFile;
       const multipleSelected = mode === 'multiple' ? document.querySelectorAll('.sticker-checkbox:checked').length > 0 : true;
-      
+
       generateBtn.disabled = !(hasImages && multipleSelected);
     }
 
@@ -842,7 +863,7 @@
       area.addEventListener('drop', (e) => {
         e.preventDefault();
         area.classList.remove('dragover');
-        
+
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('image/')) {
           const dataTransfer = new DataTransfer();
@@ -889,10 +910,10 @@
 
         // 開始生成
         progressText.textContent = '開始生成貼圖...';
-        
+
         // 取得自訂的 Prompt
         const customPrompt = promptText.value.trim();
-        
+
         const generateResponse = await fetch('/api/generate/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -909,6 +930,9 @@
           throw new Error(generateResult.error);
         }
 
+        currentTaskId = generateResult.taskId; // 儲存任務 ID
+        localStorage.setItem(LS_TASK_KEY, currentTaskId); // 持久化儲存
+
         // 輪詢進度
         pollProgress();
 
@@ -919,34 +943,40 @@
       }
     });
 
-    // 輪詢進度
+    // 輪詢進度 (帶入 taskId)
     async function pollProgress() {
+      if (!currentTaskId) return;
+
       const interval = setInterval(async () => {
         try {
-          const response = await fetch('/api/generate/status');
+          const response = await fetch(`/api/generate/status/${currentTaskId}`);
           const data = await response.json();
           const task = data.task;
 
-          if (task.status === 'running') {
+          if (task.status === 'pending') {
+            progressText.textContent = '任務排隊中... 請稍候';
+          } else if (task.status === 'running') {
             const progress = Math.round((task.progress / task.total) * 100);
             progressFill.style.width = progress + '%';
             progressFill.textContent = progress + '%';
-            progressText.textContent = `正在生成第 ${task.progress}/${task.total} 張貼圖...`;
+            progressText.textContent = `正在生成第 ${task.progress}/${task.total} 張貼圖：${task.currentSticker || '準備中'}`;
           } else if (task.status === 'completed') {
             clearInterval(interval);
             progressFill.style.width = '100%';
             progressFill.textContent = '100%';
             progressText.textContent = '生成完成！';
             showResults(task.results);
+            localStorage.removeItem(LS_TASK_KEY); // 完成後清除儲存的任務 ID
           } else if (task.status === 'failed') {
             clearInterval(interval);
             alert('生成失敗：' + task.error);
             generateBtn.disabled = false;
+            localStorage.removeItem(LS_TASK_KEY); // 失敗也清除，避免卡住
           }
         } catch (error) {
           console.error('輪詢錯誤：', error);
         }
-      }, 2000);
+      }, 3000); // 增加輪詢間隔以減輕伺服器壓力
     }
 
     // 顯示結果
@@ -959,7 +989,7 @@
       results.forEach(result => {
         const item = document.createElement('div');
         item.className = 'result-item';
-        
+
         if (result.success) {
           // 取得路徑中的檔名
           const pathParts = result.path.split(/[\\/]/);
@@ -980,7 +1010,7 @@
             <span class="result-status status-failed">✗ 失敗</span>
           `;
         }
-        
+
         resultsGrid.appendChild(item);
       });
 
@@ -988,15 +1018,18 @@
       checkReadyToGenerate();
     }
 
-    // 下載單張貼圖
+    // 下載單張貼圖 (帶入 taskId)
     function downloadSingle(filename) {
-      window.location.href = `/api/download/${filename}`;
+      if (!currentTaskId) return;
+      window.location.href = `/api/download/${currentTaskId}/${filename}`;
     }
 
-    // 下載所有貼圖
+    // 下載所有貼圖 (帶入 taskId)
     downloadAllBtn.addEventListener('click', () => {
-      window.location.href = '/api/download-all';
+      if (!currentTaskId) return;
+      window.location.href = `/api/download-all/${currentTaskId}`;
     });
   </script>
 </body>
+
 </html>

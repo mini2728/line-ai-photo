@@ -43,7 +43,7 @@ const upload = multer({
     const allowedTypes = /jpeg|jpg|png|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -52,17 +52,10 @@ const upload = multer({
   }
 });
 
-// 全域變數儲存當前任務狀態
-let currentTask = {
-  status: 'idle', // idle, running, completed, failed
-  progress: 0,
-  total: 0,
-  currentSticker: '',
-  results: [],
-  error: null,
-  startTime: null,
-  endTime: null
-};
+// 全域變數儲存所有任務狀態
+const tasks = {};
+const taskQueue = [];
+let isProcessingQueue = false;
 
 // ==================== API 路由 ====================
 
@@ -82,9 +75,9 @@ app.post('/api/upload', upload.fields([
 ]), (req, res) => {
   try {
     if (!req.files || !req.files.motherImage || !req.files.anchorImage) {
-      return res.status(400).json({ 
-        success: false, 
-        error: '請上傳母圖和錨點圖' 
+      return res.status(400).json({
+        success: false,
+        error: '請上傳母圖和錨點圖'
       });
     }
 
@@ -108,26 +101,18 @@ app.post('/api/upload', upload.fields([
       }
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
 
 /**
- * 開始生成貼圖
+ * 開始生成貼圖 (改為任務佇列)
  */
 app.post('/api/generate/start', async (req, res) => {
   try {
-    // 檢查是否有任務正在執行
-    if (currentTask.status === 'running') {
-      return res.status(400).json({
-        success: false,
-        error: '已有任務正在執行中'
-      });
-    }
-
     const { motherImagePath, anchorImagePath, selectedPresets, customPrompt } = req.body;
 
     if (!motherImagePath || !anchorImagePath) {
@@ -137,36 +122,48 @@ app.post('/api/generate/start', async (req, res) => {
       });
     }
 
+    // 建立獨特的任務 ID
+    const taskId = 'task_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
     // 載入預設文字
     const allPresets = JSON.parse(fs.readFileSync('presets.json', 'utf8'));
-    
-    // 如果有指定要生成的貼圖，只生成那些
+
     const presetsToGenerate = selectedPresets && selectedPresets.length > 0
       ? allPresets.filter((p, i) => selectedPresets.includes(i))
       : allPresets;
 
-    // 初始化任務狀態
-    currentTask = {
-      status: 'running',
+    // 初始化任務狀態並存入 tasks
+    tasks[taskId] = {
+      id: taskId,
+      status: 'pending', // pending, running, completed, failed
       progress: 0,
       total: presetsToGenerate.length,
       currentSticker: '',
       results: [],
       error: null,
-      startTime: new Date().toISOString(),
+      startTime: null,
       endTime: null
     };
 
-    // 立即回應，開始背景執行
+    // 將任務加入佇列
+    taskQueue.push({
+      taskId,
+      motherImagePath,
+      anchorImagePath,
+      presetsToGenerate,
+      customPrompt
+    });
+
+    // 立即回應
     res.json({
       success: true,
-      message: '開始生成貼圖',
-      taskId: 'task_' + Date.now(),
+      message: '任務已排入佇列',
+      taskId: taskId,
       total: presetsToGenerate.length
     });
 
-    // 背景執行生成任務
-    generateStickersBackground(motherImagePath, anchorImagePath, presetsToGenerate, customPrompt);
+    // 啟動佇列處理（如果尚未啟動）
+    processQueue();
 
   } catch (error) {
     res.status(500).json({
@@ -179,43 +176,58 @@ app.post('/api/generate/start', async (req, res) => {
 /**
  * 查詢任務狀態
  */
-app.get('/api/generate/status', (req, res) => {
+app.get('/api/generate/status/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  const task = tasks[taskId];
+
+  if (!task) {
+    return res.status(404).json({ success: false, error: '找不到該任務' });
+  }
+
   res.json({
     success: true,
-    task: currentTask
+    task: task
   });
 });
 
 /**
  * 取得生成結果
  */
-app.get('/api/generate/results', (req, res) => {
-  if (currentTask.status !== 'completed') {
+app.get('/api/generate/results/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  const task = tasks[taskId];
+
+  if (!task) {
+    return res.status(404).json({ success: false, error: '找不到該任務' });
+  }
+
+  if (task.status !== 'completed') {
     return res.status(400).json({
       success: false,
-      error: '任務尚未完成'
+      error: '任務尚未完成',
+      status: task.status
     });
   }
 
   res.json({
     success: true,
-    results: currentTask.results,
+    results: task.results,
     summary: {
-      total: currentTask.total,
-      success: currentTask.results.filter(r => r.success).length,
-      failed: currentTask.results.filter(r => !r.success).length,
-      startTime: currentTask.startTime,
-      endTime: currentTask.endTime
+      total: task.total,
+      success: task.results.filter(r => r.success).length,
+      failed: task.results.filter(r => !r.success).length,
+      startTime: task.startTime,
+      endTime: task.endTime
     }
   });
 });
 
 /**
- * 下載單張貼圖
+ * 下載單張貼圖 (支援任務目錄)
  */
-app.get('/api/download/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'output', filename);
+app.get('/api/download/:taskId/:filename', (req, res) => {
+  const { taskId, filename } = req.params;
+  const filePath = path.join(__dirname, 'output', taskId, filename);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({
@@ -228,24 +240,27 @@ app.get('/api/download/:filename', (req, res) => {
 });
 
 /**
- * 下載所有貼圖（ZIP）
+ * 下載所有貼圖 (ZIP，支援任務目錄)
  */
-app.get('/api/download-all', async (req, res) => {
+app.get('/api/download-all/:taskId', async (req, res) => {
+  const taskId = req.params.taskId;
+  const outputDir = path.join(__dirname, 'output', taskId);
+
+  if (!fs.existsSync(outputDir)) {
+    return res.status(404).json({ success: false, error: '該任務沒有生成的檔案' });
+  }
+
   try {
     const archiver = require('archiver');
     const archive = archiver('zip', { zlib: { level: 9 } });
 
-    res.attachment('line-stickers.zip');
+    res.attachment(`line-stickers-${taskId}.zip`);
     archive.pipe(res);
 
-    // 將 output 目錄中的所有 PNG 檔案加入 ZIP
-    const outputDir = path.join(__dirname, 'output');
-    if (fs.existsSync(outputDir)) {
-      const files = fs.readdirSync(outputDir).filter(f => f.endsWith('.png'));
-      files.forEach(file => {
-        archive.file(path.join(outputDir, file), { name: file });
-      });
-    }
+    const files = fs.readdirSync(outputDir).filter(f => f.endsWith('.png'));
+    files.forEach(file => {
+      archive.file(path.join(outputDir, file), { name: file });
+    });
 
     await archive.finalize();
   } catch (error) {
@@ -257,75 +272,90 @@ app.get('/api/download-all', async (req, res) => {
 });
 
 /**
- * 重置任務
+ * 重置/清除任務
  */
-app.post('/api/reset', (req, res) => {
-  if (currentTask.status === 'running') {
-    return res.status(400).json({
-      success: false,
-      error: '無法重置正在執行的任務'
-    });
+app.post('/api/reset/:taskId', (req, res) => {
+  const taskId = req.params.taskId;
+  if (tasks[taskId] && tasks[taskId].status === 'running') {
+    return res.status(400).json({ success: false, error: '無法重置正在執行的任務' });
   }
 
-  currentTask = {
-    status: 'idle',
-    progress: 0,
-    total: 0,
-    currentSticker: '',
-    results: [],
-    error: null,
-    startTime: null,
-    endTime: null
-  };
-
-  res.json({
-    success: true,
-    message: '任務已重置'
-  });
+  delete tasks[taskId];
+  res.json({ success: true, message: '任務已清除' });
 });
 
-// ==================== 背景任務 ====================
+// ==================== 佇列處理 ====================
 
 /**
- * 背景執行生成任務
+ * 依序處理任務佇列
  */
-async function generateStickersBackground(motherImagePath, anchorImagePath, presets, customPrompt) {
-  const bot = new ChatGPTAutomation();
+async function processQueue() {
+  if (isProcessingQueue || taskQueue.length === 0) return;
 
-  try {
-    console.log('\n🚀 開始背景生成任務...\n');
+  isProcessingQueue = true;
 
-    // 初始化瀏覽器
-    await bot.init();
+  while (taskQueue.length > 0) {
+    const taskData = taskQueue.shift();
+    const { taskId, motherImagePath, anchorImagePath, presetsToGenerate, customPrompt } = taskData;
+    const task = tasks[taskId];
 
-    // 登入
-    await bot.login();
+    if (!task) continue;
 
-    // 生成貼圖（帶進度更新）
-    const results = await bot.generateStickers(
-      presets,
-      motherImagePath,
-      anchorImagePath,
-      'output',
-      customPrompt  // 傳遞自訂 Prompt
-    );
+    const bot = new ChatGPTAutomation();
 
-    // 更新任務狀態
-    currentTask.status = 'completed';
-    currentTask.progress = presets.length;
-    currentTask.results = results;
-    currentTask.endTime = new Date().toISOString();
+    try {
+      console.log(`\n🚀 [Queue] 開始執行任務：${taskId}`);
 
-    console.log('\n✅ 背景任務完成\n');
+      task.status = 'running';
+      task.startTime = new Date().toISOString();
 
-  } catch (error) {
-    console.error('\n❌ 背景任務失敗：', error);
-    currentTask.status = 'failed';
-    currentTask.error = error.message;
-    currentTask.endTime = new Date().toISOString();
-  } finally {
-    await bot.close();
+      // 初始化並登入
+      await bot.init();
+      await bot.login();
+
+      // 為每個任務建立獨立的輸出目錄
+      const taskOutputDir = path.join('output', taskId);
+      if (!fs.existsSync(taskOutputDir)) {
+        fs.mkdirSync(taskOutputDir, { recursive: true });
+      }
+
+      // 生成貼圖
+      const results = await bot.generateStickers(
+        presetsToGenerate,
+        motherImagePath,
+        anchorImagePath,
+        taskOutputDir, // 傳遞隔離的輸出目錄
+        customPrompt,
+        (progress, currentSticker) => {
+          // 更新進度回饋
+          task.progress = progress;
+          task.currentSticker = currentSticker;
+        }
+      );
+
+      // 更新結果
+      task.status = 'completed';
+      task.progress = presetsToGenerate.length;
+      task.results = results.map(r => ({
+        ...r,
+        // 轉換為前端可訪問的相對路徑
+        path: r.path ? r.path.replace(/\\/g, '/') : null
+      }));
+      task.endTime = new Date().toISOString();
+
+      console.log(`\n✅ [Queue] 任務完成：${taskId}\n`);
+
+    } catch (error) {
+      console.error(`\n❌ [Queue] 任務失敗 (${taskId})：`, error);
+      task.status = 'failed';
+      task.error = error.message;
+      task.endTime = new Date().toISOString();
+    } finally {
+      await bot.close();
+    }
   }
+
+  isProcessingQueue = false;
 }
 
 // ==================== 啟動伺服器 ====================

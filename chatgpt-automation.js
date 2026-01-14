@@ -19,10 +19,10 @@ class ChatGPTAutomation {
    */
   async init() {
     console.log('🚀 啟動瀏覽器...');
-    
+
     // 使用已安裝的 Chrome 和使用者設定檔
     const userDataDir = 'C:\\Users\\mini2\\AppData\\Local\\Google\\Chrome\\User Data\\Default';
-    
+
     // 使用 launchPersistentContext 來載入使用者設定檔
     this.context = await chromium.launchPersistentContext(userDataDir, {
       headless: false,  // 顯示瀏覽器視窗
@@ -36,10 +36,10 @@ class ChatGPTAutomation {
     // 取得第一個頁面或建立新頁面
     const pages = this.context.pages();
     this.page = pages.length > 0 ? pages[0] : await this.context.newPage();
-    
+
     // browser 物件在 persistentContext 中不存在，設為 null
     this.browser = null;
-    
+
     console.log('✅ 瀏覽器啟動完成（使用已登入的 Chrome 設定檔）');
   }
 
@@ -48,7 +48,7 @@ class ChatGPTAutomation {
    */
   async login() {
     console.log('🔐 前往 ChatGPT...');
-    
+
     try {
       await this.page.goto('https://chat.openai.com', {
         waitUntil: 'networkidle',
@@ -64,7 +64,7 @@ class ChatGPTAutomation {
 
     // 檢查是否已登入 - 使用多個選擇器
     console.log('🔍 檢查登入狀態...');
-    
+
     const loginSelectors = [
       'textarea[placeholder*="提出"]',  // 中文版
       'textarea[placeholder*="Message"]',  // 英文版
@@ -94,7 +94,7 @@ class ChatGPTAutomation {
     console.log('   2. 登入 ChatGPT（如果需要）');
     console.log('   3. 等待進入對話介面');
     console.log('⏳ 最多等待 10 分鐘...');
-    
+
     // 等待任一選擇器出現
     try {
       await Promise.race(
@@ -123,10 +123,10 @@ class ChatGPTAutomation {
       // 上傳圖片
       if (imagePaths.length > 0) {
         console.log(`📤 上傳 ${imagePaths.length} 張圖片...`);
-        
+
         // 找到檔案上傳按鈕（可能是隱藏的 input）
         const fileInput = this.page.locator('input[type="file"]').first();
-        
+
         for (const imgPath of imagePaths) {
           const absolutePath = path.resolve(imgPath);
           if (!fs.existsSync(absolutePath)) {
@@ -136,14 +136,14 @@ class ChatGPTAutomation {
           await fileInput.setInputFiles(absolutePath);
           await this.page.waitForTimeout(3000); // 增加等待時間
         }
-        
+
         console.log('✅ 圖片上傳完成');
         await this.page.waitForTimeout(2000); // 等待圖片處理
       }
 
       // 等待並確認 textarea 可見
       console.log('⏳ 等待輸入框...');
-      
+
       // 上傳圖片後，輸入框可能需要更長時間才能使用
       // 嘗試多個選擇器
       const textareaSelectors = [
@@ -153,19 +153,19 @@ class ChatGPTAutomation {
         'textarea[placeholder*="Message"]',
         'textarea'
       ];
-      
+
       let textarea = null;
       let foundSelector = null;
-      
+
       // 嘗試找到可用的輸入框
       for (let attempt = 1; attempt <= 3; attempt++) {
         console.log(`嘗試找到輸入框 (${attempt}/3)...`);
-        
+
         for (const selector of textareaSelectors) {
           try {
             const element = this.page.locator(selector).first();
             await element.waitFor({ state: 'attached', timeout: 5000 });
-            
+
             // 檢查是否可見
             const isVisible = await element.isVisible();
             if (isVisible) {
@@ -178,21 +178,21 @@ class ChatGPTAutomation {
             // 繼續嘗試下一個
           }
         }
-        
+
         if (textarea) break;
-        
+
         // 如果沒找到，等待後重試
         console.log('⏳ 輸入框尚未就緒，等待 5 秒...');
         await this.page.waitForTimeout(5000);
       }
-      
+
       if (!textarea) {
         throw new Error('無法找到可用的輸入框');
       }
-      
+
       // 等待輸入框完全可用
       await this.page.waitForTimeout(2000);
-      
+
       // 輸入訊息
       console.log('📝 輸入訊息...');
       await textarea.click({ timeout: 10000 });
@@ -209,7 +209,7 @@ class ChatGPTAutomation {
 
     } catch (error) {
       console.error(`❌ 發送訊息失敗：${error.message}`);
-      
+
       // 嘗試截圖以便除錯
       try {
         const screenshotPath = `error-screenshot-${Date.now()}.png`;
@@ -218,7 +218,7 @@ class ChatGPTAutomation {
       } catch (e) {
         // 忽略截圖錯誤
       }
-      
+
       throw error;
     }
   }
@@ -228,14 +228,14 @@ class ChatGPTAutomation {
    */
   async waitForResponse() {
     console.log('⏳ 等待 ChatGPT 生成圖片...');
-    
+
     const startTime = Date.now();
     const maxWaitTime = 15 * 60 * 1000; // 最多等待 15 分鐘
-    
+
     try {
       // 步驟 1: 等待「停止生成」按鈕出現
       const stopButton = this.page.locator('button:has-text("Stop generating")');
-      
+
       console.log('⏳ 等待生成開始...');
       try {
         await stopButton.waitFor({ state: 'visible', timeout: 60000 });
@@ -294,7 +294,7 @@ class ChatGPTAutomation {
       // 步驟 5: 最後再等待 10 秒確保一切穩定
       console.log('⏳ 最後確認（10 秒）...');
       await this.page.waitForTimeout(10000);
-      
+
       const totalTime = Math.floor((Date.now() - startTime) / 1000);
       console.log(`✅ 圖片生成完成（總耗時：${totalTime} 秒）`);
 
@@ -310,7 +310,7 @@ class ChatGPTAutomation {
    */
   async downloadLatestImage(savePath) {
     console.log('💾 下載生成的圖片...');
-    
+
     try {
       // 等待圖片載入
       await this.page.waitForTimeout(5000);
@@ -328,7 +328,7 @@ class ChatGPTAutomation {
 
       let images = [];
       let usedSelector = '';
-      
+
       for (const selector of selectors) {
         try {
           images = await this.page.locator(selector).all();
@@ -344,7 +344,7 @@ class ChatGPTAutomation {
 
       if (images.length === 0) {
         console.error('❌ 找不到生成的圖片');
-        
+
         // 嘗試截圖以便除錯
         try {
           const debugPath = `debug-no-image-${Date.now()}.png`;
@@ -353,7 +353,7 @@ class ChatGPTAutomation {
         } catch (e) {
           // 忽略截圖錯誤
         }
-        
+
         return false;
       }
 
@@ -367,10 +367,10 @@ class ChatGPTAutomation {
       }
 
       console.log(`📥 下載中：${imgSrc.substring(0, 80)}...`);
-      
+
       // 處理不同類型的圖片 URL
       let buffer;
-      
+
       if (imgSrc.startsWith('data:image')) {
         // Data URL - 直接解碼
         const base64Data = imgSrc.split(',')[1];
@@ -379,7 +379,7 @@ class ChatGPTAutomation {
       } else if (imgSrc.startsWith('blob:')) {
         // Blob URL - 需要特殊處理
         console.log('⚠️ Blob URL 需要特殊處理，嘗試截圖...');
-        
+
         // 截取圖片元素
         buffer = await lastImage.screenshot();
         console.log('✅ 從元素截圖');
@@ -399,12 +399,12 @@ class ChatGPTAutomation {
       // 儲存檔案
       fs.writeFileSync(savePath, buffer);
       console.log(`✅ 已儲存：${savePath}（${Math.round(buffer.length / 1024)} KB）`);
-      
+
       return true;
 
     } catch (error) {
       console.error(`❌ 下載失敗：${error.message}`);
-      
+
       // 嘗試截圖以便除錯
       try {
         const errorPath = `error-download-${Date.now()}.png`;
@@ -413,7 +413,7 @@ class ChatGPTAutomation {
       } catch (e) {
         // 忽略截圖錯誤
       }
-      
+
       return false;
     }
   }
@@ -421,7 +421,7 @@ class ChatGPTAutomation {
   /**
    * 批次生成所有貼圖
    */
-  async generateStickers(presets, motherImgPath, anchorImgPath, outputDir = 'output', customPrompt = null) {
+  async generateStickers(presets, motherImgPath, anchorImgPath, outputDir = 'output', customPrompt = null, onProgress = null) {
     const results = [];
     const startTime = Date.now();
 
@@ -482,10 +482,15 @@ class ChatGPTAutomation {
       for (let i = 0; i < presets.length; i++) {
         const preset = presets[i];
         const stickerNum = i + 1;
-        
+
         console.log(`\n${'='.repeat(60)}`);
         console.log(`📝 [${stickerNum}/${presets.length}] ${preset.title}`);
         console.log(`${'='.repeat(60)}\n`);
+
+        // 呼叫進度回報
+        if (typeof onProgress === 'function') {
+          onProgress(i, preset.title);
+        }
 
         // 組合完整 prompt：基礎 Prompt + 指定動作
         const fullPrompt = `${basePrompt}
@@ -496,7 +501,7 @@ ${preset.content}`;
           // 每次都重新上傳母圖和錨點圖
           console.log('📤 上傳母圖和錨點圖...');
           await this.uploadAndSend(fullPrompt, [motherImgPath, anchorImgPath]);
-          
+
           // 等待至少 10 分鐘
           await this.waitForResponse();
 
