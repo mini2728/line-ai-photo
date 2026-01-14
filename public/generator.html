@@ -635,7 +635,8 @@
           </div>
         </details>
 
-        <button class="btn-primary" id="generateBtn" disabled style="margin-top: 20px;">🚀 開始生產貼圖</button>
+        <button class="btn-primary" id="generateBtn" disabled style="margin-top: 20px;"><span id="generateBtnText">🚀
+            開始生產貼圖</span></button>
 
         <div class="progress-container" id="progressContainer">
           <div class="progress-bar">
@@ -953,8 +954,15 @@
     document.querySelectorAll('input[name="generateMode"]').forEach(r => {
       r.onchange = () => {
         const container = document.getElementById('multipleSelectContainer');
-        if (r.value === 'multiple') container.classList.remove('hidden');
-        else container.classList.add('hidden');
+        if (r.value === 'multiple') {
+          container.classList.remove('hidden');
+          document.getElementById('modeMultiple').classList.add('selected');
+          document.getElementById('modeAll').classList.remove('selected');
+        } else {
+          container.classList.add('hidden');
+          document.getElementById('modeAll').classList.add('selected');
+          document.getElementById('modeMultiple').classList.remove('selected');
+        }
         updateGenerateButton();
       };
     });
