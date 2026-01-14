@@ -652,6 +652,9 @@
       <div class="card-title"><span class="step-number">3</span> 生成結果</div>
       <button class="btn-primary" id="downloadAllBtn" style="margin-bottom: 15px;">📦 下載全部 (ZIP)</button>
       <div class="results-grid" id="resultsGrid"></div>
+      <div style="margin-top: 32px; text-align: center; border-top: 1px solid var(--border-color); padding-top: 24px;">
+        <button class="btn-secondary" onclick="resetTaskAndGoHome()" style="padding: 12px 32px;">🏠 回到首頁並開始新任務</button>
+      </div>
     </div>
   </div>
   </div>
@@ -763,6 +766,14 @@
       document.getElementById('flow1Section').classList.add('hidden');
       document.getElementById('flow2Section').classList.add('hidden');
       document.getElementById('mainSubtitle').textContent = "快速創作屬於您的 40 張 LINE 貼圖";
+    }
+
+    function resetTaskAndGoHome() {
+      if (confirm('確定要回到首頁嗎？目前的任務記錄將會被清除。')) {
+        localStorage.removeItem(LS_TASK_KEY);
+        currentTaskId = null;
+        window.location.reload(); // 重新整理以重置所有狀態
+      }
     }
 
     // --- Flow 1: 全新創作邏輯 ---
@@ -1090,12 +1101,12 @@
           } else if (t.status === 'completed') {
             clearInterval(interval);
             showResults(t.results);
-            localStorage.removeItem(LS_TASK_KEY);
+            // 不再自動移除 LS_TASK_KEY，讓使用者重新整理也能看到結果
           } else if (t.status === 'failed') {
             clearInterval(interval);
             alert("任務中斷: " + t.error);
             generateBtn.disabled = false;
-            localStorage.removeItem(LS_TASK_KEY);
+            // 失敗也保留，讓使用者知道發生什麼事
           }
         } catch (e) { }
       }, 3000);
