@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>貼圖文字組合器</title>
   <style>
     :root {
-      --primary-color: #06c755; /* LINE 的綠色，呼應主題 */
+      --primary-color: #06c755;
+      /* LINE 的綠色，呼應主題 */
       --primary-hover: #05b34c;
       --bg-color: #f2f4f6;
       --card-bg: #ffffff;
@@ -18,18 +20,21 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", Helvetica, Arial, sans-serif;
       margin: 0;
-      padding: 20px 16px; /* 手機版兩側留白 */
+      padding: 20px 16px;
+      /* 手機版兩側留白 */
       background-color: var(--bg-color);
       color: var(--text-main);
       line-height: 1.6;
-      -webkit-tap-highlight-color: transparent; /* 移除點擊高亮 */
+      -webkit-tap-highlight-color: transparent;
+      /* 移除點擊高亮 */
     }
 
     /* 限制最大寬度，讓電腦版也不會太寬 */
     .container {
       max-width: 600px;
       margin: 0 auto;
-      padding-bottom: 80px; /* 預留底部空間給 Toast 或手指滑動 */
+      padding-bottom: 80px;
+      /* 預留底部空間給 Toast 或手指滑動 */
     }
 
     h1 {
@@ -43,10 +48,12 @@
     /* 卡片式設計優化 */
     .card {
       background: var(--card-bg);
-      border-radius: 16px; /* 更圓潤 */
+      border-radius: 16px;
+      /* 更圓潤 */
       padding: 20px;
       margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04); /* 輕微陰影 */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      /* 輕微陰影 */
       border: 1px solid var(--border-color);
     }
 
@@ -59,16 +66,19 @@
     }
 
     /* 輸入框優化 */
-    textarea, select {
+    textarea,
+    select {
       width: 100%;
       box-sizing: border-box;
       border-radius: 12px;
       border: 1px solid #ddd;
       padding: 12px;
-      font-size: 16px; /* 防止 iOS 自動縮放 */
+      font-size: 16px;
+      /* 防止 iOS 自動縮放 */
       background: #fff;
       transition: border-color 0.2s;
-      appearance: none; /* 移除預設樣式 */
+      appearance: none;
+      /* 移除預設樣式 */
     }
 
     /* 自定義 Select 的箭頭 (選用) */
@@ -79,7 +89,8 @@
       background-size: 10px auto;
     }
 
-    textarea:focus, select:focus {
+    textarea:focus,
+    select:focus {
       outline: none;
       border-color: var(--primary-color);
       box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.1);
@@ -102,7 +113,8 @@
     button {
       border: 0;
       border-radius: 12px;
-      padding: 14px 20px; /* 增加高度好點擊 */
+      padding: 14px 20px;
+      /* 增加高度好點擊 */
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
@@ -110,20 +122,24 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      width: 100%; /* 手機版按鈕預設滿版 */
+      width: 100%;
+      /* 手機版按鈕預設滿版 */
     }
 
     button:active {
-      transform: scale(0.98); /* 點擊回饋效果 */
+      transform: scale(0.98);
+      /* 點擊回饋效果 */
     }
 
     /* 主要按鈕 (複製) */
     button.primary {
       background: var(--primary-color);
       color: white;
-      font-size: 18px; /* 重要按鈕字大一點 */
+      font-size: 18px;
+      /* 重要按鈕字大一點 */
       box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
     }
+
     button.primary:hover {
       background: var(--primary-hover);
     }
@@ -132,7 +148,8 @@
     button.ghost {
       background: #f0f0f0;
       color: #555;
-      flex: 1; /* 讓兩個次要按鈕平分寬度 */
+      flex: 1;
+      /* 讓兩個次要按鈕平分寬度 */
     }
 
     .hint {
@@ -156,19 +173,20 @@
       opacity: 0;
       transition: all 0.3s ease;
       pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 100;
       width: max-content;
       max-width: 80%;
       text-align: center;
     }
+
     .toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
-
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>LINE 貼圖文字組合器</h1>
@@ -184,7 +202,7 @@
     <div class="card">
       <label for="inputText">步驟 2：輸入 Prompt (會自動儲存)</label>
       <textarea id="inputText" placeholder="在這裡輸入你的母圖、風格描述..."></textarea>
-      
+
       <div class="btns">
         <button class="ghost" id="saveBtn">儲存內容</button>
         <button class="ghost" id="clearBtn" style="color: #ff4d4f; background: #fff0f0;">清空</button>
@@ -204,15 +222,15 @@
     /* 邏輯部分保持不變，僅微調 Toast 顯示方式以配合 CSS 動畫 
     */
     const DEFAULT_INPUT =
-  `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
+      `請根據我上傳的「母圖（原始角色範例）」作為 【角色唯一身份定義來源】， 以及我上傳的「錨點圖（已生成且最像的角色圖）」作為 【風格與比例校正參考】。
   
-  【角色一致性（最高優先）】
-  - 角色只能有「一個人」
-  - 臉型、五官比例、眼型、鼻型、嘴型、臉部氣質 必須與「母圖」完全一致
-  - 髮型、髮色、服裝、配色、畫風 必須同時符合「母圖」與「錨點圖」
-  - 若母圖與錨點圖有任何差異， 一律以「母圖」為最終標準
-  - 禁止融合、重新詮釋或美化角色外觀
-  - 禁止生成新角色或改變角色設定
+【角色一致性（最高優先）｜優化合規版】
+- 全套貼圖僅呈現同一位固定角色，不得出現第二角色或角色變體
+- 角色的臉部結構、五官比例、眼型、鼻型、嘴型與整體氣質需在整套貼圖中保持高度一致與穩定
+- 髮型、髮色、服裝、配色與畫風需依據「母圖」所建立的角色設定，並以「錨點圖」作為比例與風格一致性的輔助參考
+- 若母圖與錨點圖之間出現差異，請以母圖所呈現的角色設定為主要依循基準
+- 不得進行角色融合、誇張化處理或風格性美化，請維持角色原有的成熟、內斂外觀特質
+- 不得新增角色、衍生角色，或改變既有角色設定
   
   【畫風與用途】
   - 寫實素描風格
@@ -242,9 +260,9 @@
   - 不可改變畫風或風格
   
   請只輸出「一張符合 LINE 規範的貼圖圖片」`;
-  
+
     const LS_KEY = "sticker_text_input_v1";
-  
+
     const presets = [
       { title: "① 你好", content: `【貼圖文字】\n你好\n\n【表情與動作】\n角色微笑，親切揮手，給人第一眼就想打招呼的感覺。` },
       { title: "② 哈囉", content: `【貼圖文字】\n哈囉\n\n【表情與動作】\n角色開朗笑容，手舉高揮動，充滿活力。` },
@@ -288,12 +306,12 @@
       { title: "㊵ 飛吻", content: `【貼圖文字】\n飛吻\n\n【表情與動作】\n角色微微嘟嘴，手從嘴邊向前送出飛吻，俏皮可愛。` },
       { title: "㊶ 秀秀", content: `【貼圖文字】\n秀秀\n\n【表情與動作】\n角色露出心疼表情，伸手輕輕安撫對方。` },
     ];
-  
+
     const $ = (id) => document.getElementById(id);
     const inputText = $("inputText");
     const presetSelect = $("presetSelect");
     const toast = $("toast");
-  
+
     function showToast(msg) {
       toast.textContent = msg;
       toast.classList.add("show");
@@ -303,22 +321,22 @@
         toast.classList.remove("show");
       }, 2000);
     }
-  
+
     function normalizeNewlines(s) {
       return (s || "").replace(/\r\n/g, "\n").trim();
     }
-  
+
     function buildCombined() {
       const user = normalizeNewlines(inputText.value);
       const sel = presetSelect.value ? presets[Number(presetSelect.value)].content : "";
       const preset = normalizeNewlines(sel);
-  
+
       if (user && preset) return `${user}\n\n${preset}\n`;
       if (user) return `${user}\n`;
       if (preset) return `${preset}\n`;
       return "";
     }
-  
+
     function populateSelect() {
       presets.forEach((p, i) => {
         const opt = document.createElement("option");
@@ -327,26 +345,26 @@
         presetSelect.appendChild(opt);
       });
     }
-  
+
     function loadSaved() {
       const saved = localStorage.getItem(LS_KEY);
       if (saved != null && saved.trim() !== "") inputText.value = saved;
       else inputText.value = DEFAULT_INPUT;
     }
-  
+
     function saveInput() {
       localStorage.setItem(LS_KEY, inputText.value);
       showToast("✅ 已儲存");
     }
-  
+
     function clearInput() {
-      if(confirm("確定要清空並恢復預設值嗎？")) {
+      if (confirm("確定要清空並恢復預設值嗎？")) {
         localStorage.removeItem(LS_KEY);
         inputText.value = DEFAULT_INPUT;
         showToast("🧹 已重置為預設內容");
       }
     }
-  
+
     async function copyToClipboard(text) {
       try {
         await navigator.clipboard.writeText(text);
@@ -369,18 +387,18 @@
         }
       }
     }
-  
+
     // init
     populateSelect();
     loadSaved();
-    
+
     // 預設選中第一個，方便手機測試
     // presetSelect.value = "0"; 
-  
+
     // events
     $("saveBtn").addEventListener("click", saveInput);
     $("clearBtn").addEventListener("click", clearInput);
-  
+
     $("copyBtn").addEventListener("click", async () => {
       const combined = buildCombined();
       if (!combined.trim()) {
@@ -392,4 +410,5 @@
     });
   </script>
 </body>
+
 </html>
