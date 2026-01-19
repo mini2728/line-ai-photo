@@ -1085,10 +1085,25 @@
       allPresets = await res.json();
       const list = document.getElementById('stickerCheckboxList');
       list.innerHTML = '';
+
+      let currentCategory = "";
       allPresets.forEach((p, i) => {
+        // 插入分類標題
+        if (p.category && p.category !== currentCategory) {
+          currentCategory = p.category;
+          const header = document.createElement('div');
+          header.style.cssText = 'padding: 12px 8px 4px; font-weight: 800; color: var(--primary-color); font-size: 14px; border-bottom: 2px solid #f1f5f9; margin-top: 10px; background: #fafafa;';
+          header.textContent = `📂 ${currentCategory}`;
+          list.appendChild(header);
+        }
+
         const lbl = document.createElement('label');
-        lbl.style.cssText = 'display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f1f5f9; cursor: pointer;';
-        lbl.innerHTML = `<input type="checkbox" value="${i}" class="sticker-checkbox" style="width:18px; height:18px; margin-right:12px;"> ${i + 1}. ${p.title}`;
+        lbl.style.cssText = 'display: flex; align-items: center; padding: 10px 8px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s;';
+        lbl.onmouseover = () => lbl.style.background = '#f8fafc';
+        lbl.onmouseout = () => lbl.style.background = 'transparent';
+
+        lbl.innerHTML = `<input type="checkbox" value="${i}" class="sticker-checkbox" style="width:18px; height:18px; margin-right:12px;"> 
+                         <span style="font-size: 14px;">${p.title}</span>`;
         lbl.querySelector('input').onchange = updateSelectedCount;
         list.appendChild(lbl);
       });
